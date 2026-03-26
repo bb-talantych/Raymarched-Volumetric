@@ -1,0 +1,195 @@
+
+#pragma kernel CS_RaymarchVolumetric
+
+#define PI 3.1415926538
+
+RWTexture2D<float4> Result;
+
+float3 _SpherePosition;
+float _SphereRadius;
+
+float3 _WorldSpaceCameraPos;
+
+float _DensityFalloff;
+float _StepSize, _LightStepSize;
+float3 _AbsorptionCoef, _ScatteringCoef;
+float _VolumeDensity, _AsymmetryFactor;
+
+float3 _SunDirection;
+float3 _SunColor;
+
+float2 _ScreenResolution;
+Texture2D<float> _CameraDepthTexture;
+SamplerState sampler_CameraDepthTexture;
+float4x4 _CameraProjectionToWorld;
+
+
+float3 GetWorldPos(float2 _uv, float _depth)
+{
+    float4 viewPosH = float4(_uv * 2.0 - 1.0, _depth, 1.0);
+    float4 worldPosH = mul(_CameraProjectionToWorld, viewPosH);
+
+    return worldPosH.xyz / worldPosH.w;
+}
+
+// Sphere Intersection Check
+float2 SolveQuadratic(float a, float b, float c)
+{
+    float D = (b * b) - (4 * a * c);
+                
+    if(D <= 0)
+        return 0;
+
+    float t1 = (-b + sqrt(D)) / (2 * a);
+    float t2 = (-b - sqrt(D)) / (2 * a);
+
+    return float2(t1, t2);
+}
+float2 RaySphereDst(float3 _rayOrigin, float3 _rayDir)
+{
+    float3 center = _SpherePosition;
+    float radius = _SphereRadius;
+
+    float3 vecToOrigin = _rayOrigin - center;
+                
+    // normally dot(_rayDir, _rayDir), but rayDir is normalized
+    float a = 1;
+    float b = 2 * (dot(_rayDir, vecToOrigin));
+    float c = dot(vecToOrigin, vecToOrigin) - (radius * radius);
+
+    float2 solutions = SolveQuadratic(a,b,c);
+
+    float dstA = min(solutions.x, solutions.y);
+    float dstB = max(solutions.x, solutions.y);
+
+    // CASE 1: ray intersects sphere from outside (0 <= dstA <= dstB)
+    // dstA is dst to nearest intersection, dstB dst to far intersection
+
+    // CASE 2: ray intersects sphere from inside (dstA < 0 < dstB)
+    // dstA is the dst to intersection behind the ray, dstB is dst to forward intersection
+
+    // CASE 3: ray misses sphere (dstA == dstB == 0)
+
+    float dstToSphere = max(0, dstA);
+    float dstInsideSphere = max(0, dstB - dstToSphere);
+    return float2(dstToSphere, dstInsideSphere);
+}
+
+float GetLightTravelledDist(float3 _samplePoint, float3 _dirToLight) 
+{
+    return RaySphereDst(_samplePoint, _dirToLight).y;
+}
+            
+float Isotropic_Scatering()
+{
+    return 1.0 / (4.0 * PI);
+}
+float Henyey_Greenstein(float g, float _cosTheta)
+{
+    float numen = 1.0 - (g * g);
+    float denom = 1.0 + (g * g) - (2.0 * g * _cosTheta);
+    denom = denom * sqrt(denom);
+
+    //return Isotropic_Scatering() * (numen / denom);
+    return (numen / denom);
+}
+
+float GetDensity(float3 _samplePoint)
+{       
+    //float noiseValue = _VolumeTex.Sample(sampler_VolumeTex, (_samplePoint + 2) * 0.25);
+
+    float noiseValue = 0.5;
+
+    float3 vp = _samplePoint - _SpherePosition;
+    float dist = min(1.0f, length(vp / _SphereRadius));
+    float falloff = smoothstep(_DensityFalloff, 1, dist);
+
+    return noiseValue * (1 - falloff) * _VolumeDensity;
+}
+
+[numthreads(8,8,1)]
+void CS_RaymarchVolumetric (uint3 id : SV_DispatchThreadID)
+{
+    if(id.x >= _ScreenResolution.x || id.y >= _ScreenResolution.y) return;
+
+    // early terminations
+    float3 extinctionCoef = _AbsorptionCoef + _ScatteringCoef;
+    if(_VolumeDensity == 0 || max(max(extinctionCoef.x, extinctionCoef.y), extinctionCoef.z) == 0)
+    {
+        Result[id.xy] = 0;
+        return;
+    }
+
+    // checking volume intersection
+    float2 uv = id.xy / _ScreenResolution;
+    float depth = _CameraDepthTexture.SampleLevel(sampler_CameraDepthTexture, uv, 0);
+    float3 worldPos = GetWorldPos(uv, depth);
+
+    float3 rayOrigin = _WorldSpaceCameraPos;
+    float3 worldSpaceRay = worldPos - rayOrigin;
+    float3 rayDir = normalize(worldSpaceRay);
+
+    float2 rayVolumeInfo = RaySphereDst(rayOrigin, rayDir);
+    float dstToVolume = rayVolumeInfo.x;
+    float dstInsideVolume = rayVolumeInfo.y;
+
+    bool volumeHit = dstInsideVolume > 0 && dstToVolume < length(worldSpaceRay);
+    if(!volumeHit)
+    {
+        Result[id.xy] = 0;
+        return;
+    }
+
+    // raymarching
+    float stepSize = _StepSize;
+    float lightStepSize = _LightStepSize;
+    float3 dirToLight = -_SunDirection;
+    float3 lightColor = _SunColor;
+
+    int steps = ceil(dstInsideVolume / stepSize);
+    float3 volumeEntryPos = rayOrigin + rayDir * dstToVolume;
+
+    float3 transmittance = 1;
+    float3 output = 0;
+    for(int s = 0; s < steps; s++)
+    {
+        float distTravelled = stepSize * (s + 0.5);
+        float3 samplePoint = volumeEntryPos + rayDir * distTravelled;
+
+        float sampleDensity = GetDensity(samplePoint);
+        transmittance *= exp(-stepSize * extinctionCoef * sampleDensity);
+
+        // light ray raymarching
+        float lightTravelledDist = GetLightTravelledDist(samplePoint, dirToLight); 
+        if(sampleDensity > 0 && lightTravelledDist > 0)
+        {
+            // we need direction to Camera, which is -rayDir
+            float cosAngle = dot(-rayDir, dirToLight);
+            float phase = Henyey_Greenstein(_AsymmetryFactor, cosAngle);
+
+            int lightSteps = ceil(lightTravelledDist / lightStepSize);
+            float tau = 0;
+//            [loop]
+            for(int l = 0; l < lightSteps; l++)
+            {                            
+                float lightDistTravelled = lightStepSize * (l + 0.5f);
+                float3 lightSamplePoint = samplePoint + dirToLight * lightDistTravelled;
+                tau += GetDensity(lightSamplePoint);
+            }
+
+            float3 lightAttenuation = exp(-tau * lightStepSize * extinctionCoef);         
+            float3 scateredLight = phase * lightAttenuation * lightColor;
+            scateredLight = phase * lightAttenuation * lightColor;
+
+            output += transmittance
+                    * scateredLight
+                    * _ScatteringCoef
+                    * stepSize
+                    * sampleDensity;
+        }
+                    
+        if(min(min(transmittance.x, transmittance.y), transmittance.z) < 0.001)
+            break;
+    }
+    Result[id.xy] = float4(output, 1);
+}

@@ -1,0 +1,76 @@
+#pragma kernel CSGetWorley
+
+RWTexture3D<float> Result;
+
+float _Resolution, _NoiseTiling;
+
+#define NUM_CELLS 4
+
+float hash(uint n) 
+{
+    // integer hash copied from Hugo Elias
+	n = (n << 13U) ^ n;
+    n = n * (n * n * 15731U + 0x789221U) + 0x1376312589U;
+    return float(n & uint(0x7fffffffU)) / float(0x7fffffff);
+}
+float AddElements(float3 _input)
+{
+    return (_input.x + _input.y + _input.z) / 3;
+}
+void GenerateCellArray(out float3 _cellArray[NUM_CELLS][NUM_CELLS][NUM_CELLS])
+{
+    for(int z = 0; z < NUM_CELLS; z++)
+    {
+        for(int y = 0; y < NUM_CELLS; y++)
+        {
+            for(int x = 0; x < NUM_CELLS; x++)
+            {
+                float pointX = hash((x + 14) * 1233.534234 + (y * NUM_CELLS) * 55.9975 + (z * NUM_CELLS * NUM_CELLS) * 421.58);
+                float pointY = hash((y + 4) * 12.554 + (z * NUM_CELLS * NUM_CELLS) * 177.5523);
+                float pointZ = hash((z + 524) * 124.23123);
+
+                _cellArray[x][y][z] = float3(pointX, pointY, pointZ);
+            }
+        }
+    }
+}
+float WorleyNoise(float3 _cellArray[NUM_CELLS][NUM_CELLS][NUM_CELLS], float3 _uvw)
+{
+    float minDistModifier = 1.35;
+
+    float3 tilled_UVW = frac(_uvw * _NoiseTiling);
+    float3 cell_UVW = tilled_UVW * NUM_CELLS; 
+    int3 cellID = floor(cell_UVW);
+
+    float minDist = 1;
+    for(int z = -1; z <= 1; z++)
+    {
+        for(int y = -1; y <= 1; y++)
+        {
+            for(int x = -1; x <= 1; x++)
+            {
+                int3 sampleCellPos = (cellID + int3(x, y, z) + NUM_CELLS) % NUM_CELLS;
+
+                float3 sampleCellWorleyPoint = _cellArray[sampleCellPos.x][sampleCellPos.y][sampleCellPos.z] + float3(x, y, z);
+
+                float3 diff = sampleCellWorleyPoint - frac(cell_UVW);
+                minDist = min(minDist, length(diff));
+            }
+        }
+    }
+
+    return 1 - (minDist * minDistModifier);
+}
+
+[numthreads(4,4,4)]
+void CSGetWorley (uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _Resolution || id.y >= _Resolution || id.z >= _Resolution) return;
+    float3 uvw =  id / _Resolution;
+
+    float3 cellArray[NUM_CELLS][NUM_CELLS][NUM_CELLS];
+    GenerateCellArray(cellArray);
+    float noise = WorleyNoise(cellArray, uvw);
+
+    Result[id] = noise;
+}
