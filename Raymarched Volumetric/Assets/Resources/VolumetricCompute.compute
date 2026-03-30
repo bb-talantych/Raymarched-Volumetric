@@ -3,26 +3,33 @@
 
 #define PI 3.1415926538
 
-RWTexture2D<float4> Result;
+
+RWTexture2D<float3> VolumetricColor;
+RWTexture2D<float3> VolumetricTransmittance;
+
+float2 _ScreenResolution;
+float3 _WorldSpaceCameraPos;
+float4x4 _CameraProjectionToWorld;
+Texture2D<float> _CameraDepthTexture;
+SamplerState sampler_CameraDepthTexture;
+
+float3 _SunDirection;
+float3 _SunColor;
 
 float3 _SpherePosition;
 float _SphereRadius;
-
-float3 _WorldSpaceCameraPos;
 
 float _DensityFalloff;
 float _StepSize, _LightStepSize;
 float3 _AbsorptionCoef, _ScatteringCoef;
 float _VolumeDensity, _AsymmetryFactor;
 
-float3 _SunDirection;
-float3 _SunColor;
-
-float2 _ScreenResolution;
-Texture2D<float> _CameraDepthTexture;
-SamplerState sampler_CameraDepthTexture;
-float4x4 _CameraProjectionToWorld;
-
+void TerminateEarly(uint3 id)
+{
+    VolumetricColor[id.xy] = 0;
+    VolumetricTransmittance[id.xy] = 1;
+    return;
+}
 
 float3 GetWorldPos(float2 _uv, float _depth)
 {
@@ -112,12 +119,12 @@ void CS_RaymarchVolumetric (uint3 id : SV_DispatchThreadID)
 {
     if(id.x >= _ScreenResolution.x || id.y >= _ScreenResolution.y) return;
 
+
     // early terminations
     float3 extinctionCoef = _AbsorptionCoef + _ScatteringCoef;
     if(_VolumeDensity == 0 || max(max(extinctionCoef.x, extinctionCoef.y), extinctionCoef.z) == 0)
     {
-        Result[id.xy] = 0;
-        return;
+        TerminateEarly(id);
     }
 
     // checking volume intersection
@@ -136,8 +143,7 @@ void CS_RaymarchVolumetric (uint3 id : SV_DispatchThreadID)
     bool volumeHit = dstInsideVolume > 0 && dstToVolume < length(worldSpaceRay);
     if(!volumeHit)
     {
-        Result[id.xy] = 0;
-        return;
+        TerminateEarly(id);
     }
 
     // raymarching
@@ -169,7 +175,6 @@ void CS_RaymarchVolumetric (uint3 id : SV_DispatchThreadID)
 
             int lightSteps = ceil(lightTravelledDist / lightStepSize);
             float tau = 0;
-//            [loop]
             for(int l = 0; l < lightSteps; l++)
             {                            
                 float lightDistTravelled = lightStepSize * (l + 0.5f);
@@ -191,5 +196,6 @@ void CS_RaymarchVolumetric (uint3 id : SV_DispatchThreadID)
         if(min(min(transmittance.x, transmittance.y), transmittance.z) < 0.001)
             break;
     }
-    Result[id.xy] = float4(output, 1);
+    VolumetricColor[id.xy] = output;
+    VolumetricTransmittance[id.xy] = transmittance;
 }
