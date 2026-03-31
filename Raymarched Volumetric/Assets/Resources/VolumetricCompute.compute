@@ -19,10 +19,15 @@ float3 _SunColor;
 float3 _SpherePosition;
 float _SphereRadius;
 
-float _DensityFalloff;
 float _StepSize, _LightStepSize;
+
+Texture3D<float> _NoiseTex;
+SamplerState sampler_NoiseTex;
 float3 _AbsorptionCoef, _ScatteringCoef;
 float _VolumeDensity, _AsymmetryFactor;
+float _DensityFalloff, _ScateredLightBase, _ScateredLightMultiplier;
+float3 _AnimationDir;
+float _FrameTime;
 
 void TerminateEarly(uint3 id)
 {
@@ -97,15 +102,17 @@ float Henyey_Greenstein(float g, float _cosTheta)
     float denom = 1.0 + (g * g) - (2.0 * g * _cosTheta);
     denom = denom * sqrt(denom);
 
-    //return Isotropic_Scatering() * (numen / denom);
-    return (numen / denom);
+    return Isotropic_Scatering() * (numen / denom);
+    //return (numen / denom);
 }
 
 float GetDensity(float3 _samplePoint)
-{       
-    //float noiseValue = _VolumeTex.Sample(sampler_VolumeTex, (_samplePoint + 2) * 0.25);
-
-    float noiseValue = 0.5;
+{   
+    float3 uvw = _samplePoint / _SphereRadius;
+    uvw += _AnimationDir * _FrameTime;
+    float noiseValue = _NoiseTex.SampleLevel(sampler_NoiseTex, uvw, 0);
+    noiseValue = saturate(noiseValue);
+    //float noiseValue = 0.5;
 
     float3 vp = _samplePoint - _SpherePosition;
     float dist = min(1.0f, length(vp / _SphereRadius));
@@ -182,9 +189,16 @@ void CS_RaymarchVolumetric (uint3 id : SV_DispatchThreadID)
                 tau += GetDensity(lightSamplePoint);
             }
 
-            float3 lightAttenuation = exp(-tau * lightStepSize * extinctionCoef);         
-            float3 scateredLight = phase * lightAttenuation * lightColor;
-            scateredLight = phase * lightAttenuation * lightColor;
+            float3 beer = exp(-tau * lightStepSize * extinctionCoef);  
+            float powderMultiplier = 4;
+            float powderMin = 0.3f;
+            float3 powder = 1 - exp(-tau * lightStepSize * extinctionCoef * powderMultiplier); 
+            powder = max(powderMin, powder);
+            float3 lightAttenuation = beer * powder;
+            float3 scateredLight = phase * beer * lightColor;
+            
+            scateredLight *= _ScateredLightMultiplier;
+            scateredLight += _ScateredLightBase;
 
             output += transmittance
                     * scateredLight

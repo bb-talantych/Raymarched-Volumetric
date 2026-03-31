@@ -1,10 +1,14 @@
 #pragma kernel CSGetWorley
 
+#include "Simplex.compute"
+
 RWTexture3D<float> Result;
 
-float _Resolution, _NoiseTiling;
+float _Resolution, _MinDistMultiplier;
+float _WorleyTiling, _SimplexTiling, _NoiseMix;
 
 #define NUM_CELLS 4
+#define NUM_POINTS 5
 
 float hash(uint n) 
 {
@@ -13,6 +17,7 @@ float hash(uint n)
     n = n * (n * n * 15731U + 0x789221U) + 0x1376312589U;
     return float(n & uint(0x7fffffffU)) / float(0x7fffffff);
 }
+
 float AddElements(float3 _input)
 {
     return (_input.x + _input.y + _input.z) / 3;
@@ -36,9 +41,9 @@ void GenerateCellArray(out float3 _cellArray[NUM_CELLS][NUM_CELLS][NUM_CELLS])
 }
 float WorleyNoise(float3 _cellArray[NUM_CELLS][NUM_CELLS][NUM_CELLS], float3 _uvw)
 {
-    float minDistModifier = 1.35;
+    float minDistModifier = _MinDistMultiplier;
 
-    float3 tilled_UVW = frac(_uvw * _NoiseTiling);
+    float3 tilled_UVW = frac(_uvw * _WorleyTiling);
     float3 cell_UVW = tilled_UVW * NUM_CELLS; 
     int3 cellID = floor(cell_UVW);
 
@@ -61,6 +66,44 @@ float WorleyNoise(float3 _cellArray[NUM_CELLS][NUM_CELLS][NUM_CELLS], float3 _uv
 
     return 1 - (minDist * minDistModifier);
 }
+float WorleyNoiseV2(float3 _uvw)
+{
+    float minDistModifier = _MinDistMultiplier;
+
+    float3 tilled_UVW = frac(_uvw * _WorleyTiling);
+
+    float3 testArray[NUM_POINTS];
+    float minDist = 1;
+    for(int i = 0; i < NUM_POINTS; i++)
+    {
+        int seed = 2412342;
+        float pointX = hash(seed + i);
+        float pointY = hash(seed + i * 3);
+        float pointZ = hash(seed + i * 15);
+
+        float3 pointPos = float3(pointX, pointY, pointZ); 
+        testArray[i] = pointPos;
+    }
+
+    for(int i = 0; i < NUM_POINTS; i++)
+    {
+        float dist = 1;
+        for(int x = -1; x <= 1; x++)
+        {
+            for(int y = -1; y <= 1; y++)
+            {
+                for(int z = -1; z <= 1; z++)
+                {
+                    float3 pointPos = testArray[i] + float3(x, y, z);
+                    dist = length(pointPos - tilled_UVW);
+                    minDist = min(minDist, dist);
+                }
+            }
+        }
+    }
+
+    return 1 - (minDist * minDistModifier);
+}
 
 [numthreads(4,4,4)]
 void CSGetWorley (uint3 id : SV_DispatchThreadID)
@@ -70,7 +113,11 @@ void CSGetWorley (uint3 id : SV_DispatchThreadID)
 
     float3 cellArray[NUM_CELLS][NUM_CELLS][NUM_CELLS];
     GenerateCellArray(cellArray);
-    float noise = WorleyNoise(cellArray, uvw);
+    float worley = WorleyNoise(cellArray, uvw);
 
-    Result[id] = noise;
+    float simplex = snoise(uvw * _SimplexTiling);
+    float worley2 = WorleyNoiseV2(uvw);
+    float noise2 = lerp(simplex, worley2, _NoiseMix);
+
+    Result[id] = noise2;
 }
