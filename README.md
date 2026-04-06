@@ -1,5 +1,5 @@
 # Raymarched Volumetric
-This project focuses on rendering **participating media(clouds, fog, etc.)** using **volumetric raymarcher**, while trying to make it **higly customizable** and **as physically accurate as possible**.
+This project focuses on rendering **participating media(clouds, fog, etc.)** using **volumetric raymarcher**, while trying to make it as **customizable** and **physically accurate** as possible.
 
 ## Optimization Techniques Used
 * Compute shader based raymarching calculations
