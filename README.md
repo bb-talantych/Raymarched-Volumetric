@@ -1,5 +1,5 @@
 # Raymarched Volumetric
-This project focuses on creating a **higly customizable volumetric raymarcher** for participating media(clouds, fog, etc.). 
+This project focuses on creating a **higly customizable **volumetric raymarcher** for participating media(clouds, fog, etc.). 
 
 ## Optimization Techniques Used
 * Compute shader based raymarching calculations
