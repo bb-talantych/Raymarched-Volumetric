@@ -5,7 +5,10 @@
 RWTexture3D<float> Result;
 
 float _Resolution, _MinDistMultiplier;
-float _WorleyTiling, _SimplexTiling, _NoiseMix;
+float _WorleyTiling, _NoiseOffsetTiling, _NoiseMix;
+
+Texture2D<float> _NoiseOffsetTex;
+SamplerState sampler_NoiseOffsetTex;
 
 #define NUM_CELLS 4
 #define NUM_POINTS 5
@@ -115,9 +118,13 @@ void CSGetWorley (uint3 id : SV_DispatchThreadID)
     GenerateCellArray(cellArray);
     float worley = WorleyNoise(cellArray, uvw);
 
-    float simplex = snoise(uvw * _SimplexTiling);
     float worley2 = WorleyNoiseV2(uvw);
+
+    float simplex = snoise(uvw * _NoiseOffsetTiling);
     float noise2 = lerp(simplex, worley2, _NoiseMix);
 
-    Result[id] = noise2;
+    float noiseTex = _NoiseOffsetTex.SampleLevel(sampler_NoiseOffsetTex, uvw.xy * _NoiseOffsetTiling * 0.1, 0);
+    float noise3 = lerp(noiseTex, worley2, _NoiseMix);
+
+    Result[id] = noise3;
 }

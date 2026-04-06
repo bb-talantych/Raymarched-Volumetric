@@ -51,6 +51,7 @@ Shader "_BB/VolumetricComposite"
                 float3 transmittance = tex2D(_VolumetricTransmittance, i.uv);
 
                 float3 finalOutput = src * transmittance + volumetricColor;
+                //finalOutput = transmittance;
                 return float4(finalOutput, 1);
             }
             ENDCG

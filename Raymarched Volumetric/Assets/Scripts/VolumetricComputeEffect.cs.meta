@@ -5,9 +5,11 @@ MonoImporter:
   serializedVersion: 2
   defaultReferences:
   - sun: {instanceID: 0}
+  - skybox: {fileID: 2100000, guid: 931954c29babf5c47ae2bbda0ceb7a4d, type: 2}
   - volumetricCompute: {fileID: 7200000, guid: d692687f4b1b8bc4b800d75052b1f3f4, type: 3}
   - volumetricCompositeShader: {fileID: 4800000, guid: 390e330f79416e34a9a401209b03228d, type: 3}
   - noiseCompute: {fileID: 7200000, guid: 9946e594148d71a4593aac3a53b370e9, type: 3}
+  - noiseOffsetTex: {fileID: 2800000, guid: df8c261748748414fa27678afec5c9c6, type: 3}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

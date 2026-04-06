@@ -1,6 +1,11 @@
 
 #pragma kernel CS_RaymarchVolumetric
 
+#pragma multi_compile __ PHASE_HG PHASE_REYLEIGH PHASE_SCHLICK
+#pragma multi_compile __ APPLY_POWDER_TO_AMBIENT
+
+#define MAX_STEPS 128
+#define MAX_LIGHT_STEPS 128
 #define PI 3.1415926538
 
 
@@ -9,7 +14,9 @@ RWTexture2D<float3> VolumetricTransmittance;
 
 float2 _ScreenResolution;
 float3 _WorldSpaceCameraPos;
+
 float4x4 _CameraProjectionToWorld;
+
 Texture2D<float> _CameraDepthTexture;
 SamplerState sampler_CameraDepthTexture;
 
@@ -23,26 +30,17 @@ float _StepSize, _LightStepSize;
 
 Texture3D<float> _NoiseTex;
 SamplerState sampler_NoiseTex;
+TextureCube<float4> _Skybox;
+SamplerState sampler_Skybox;
+
 float3 _AbsorptionCoef, _ScatteringCoef;
 float _VolumeDensity, _AsymmetryFactor;
-float _DensityFalloff, _ScateredLightBase, _ScateredLightMultiplier;
+float _DensityFalloff, _MultiScatteredLightMultiplier, _AmbientPower;
+float _PowderPower, _PowderExponent;
+
 float3 _AnimationDir;
 float _FrameTime;
 
-void TerminateEarly(uint3 id)
-{
-    VolumetricColor[id.xy] = 0;
-    VolumetricTransmittance[id.xy] = 1;
-    return;
-}
-
-float3 GetWorldPos(float2 _uv, float _depth)
-{
-    float4 viewPosH = float4(_uv * 2.0 - 1.0, _depth, 1.0);
-    float4 worldPosH = mul(_CameraProjectionToWorld, viewPosH);
-
-    return worldPosH.xyz / worldPosH.w;
-}
 
 // Sphere Intersection Check
 float2 SolveQuadratic(float a, float b, float c)
@@ -87,11 +85,7 @@ float2 RaySphereDst(float3 _rayOrigin, float3 _rayDir)
     return float2(dstToSphere, dstInsideSphere);
 }
 
-float GetLightTravelledDist(float3 _samplePoint, float3 _dirToLight) 
-{
-    return RaySphereDst(_samplePoint, _dirToLight).y;
-}
-            
+// phase functions         
 float Isotropic_Scatering()
 {
     return 1.0 / (4.0 * PI);
@@ -103,16 +97,48 @@ float Henyey_Greenstein(float g, float _cosTheta)
     denom = denom * sqrt(denom);
 
     return Isotropic_Scatering() * (numen / denom);
-    //return (numen / denom);
+}
+float Rayleigh(float _cosTheta)
+{
+    return (3.0 / (16.0 * PI)) * (1 + _cosTheta * _cosTheta);
+}
+float Schlick(float g, float _cosTheta)
+{
+    float g3 = g * g * g;
+    float k = (1.55 * g) - (0.55 * g3);
+
+    float numen = 1.0 - (k * k);
+    float denom = 1.0 + (k * _cosTheta);
+    denom = denom * denom;
+
+    return Isotropic_Scatering() * (numen / denom);
 }
 
+// 
+void TerminateEarly(uint3 id)
+{
+    VolumetricColor[id.xy] = 0;
+    VolumetricTransmittance[id.xy] = 1;
+    return;
+}
+float3 GetWorldPos(float2 _uv, float _depth)
+{
+    float4 viewPosH = float4(_uv * 2.0 - 1.0, _depth, 1.0);
+    float4 worldPosH = mul(_CameraProjectionToWorld, viewPosH);
+
+    return worldPosH.xyz / worldPosH.w;
+}
+float GetLightTravelledDist(float3 _samplePoint, float3 _dirToLight) 
+{
+    return RaySphereDst(_samplePoint, _dirToLight).y;
+}
 float GetDensity(float3 _samplePoint)
 {   
-    float3 uvw = _samplePoint / _SphereRadius;
+    float3 uvw = ( _samplePoint - _SpherePosition) / _SphereRadius;
     uvw += _AnimationDir * _FrameTime;
+
     float noiseValue = _NoiseTex.SampleLevel(sampler_NoiseTex, uvw, 0);
     noiseValue = saturate(noiseValue);
-    //float noiseValue = 0.5;
 
     float3 vp = _samplePoint - _SpherePosition;
     float dist = min(1.0f, length(vp / _SphereRadius));
@@ -120,12 +146,40 @@ float GetDensity(float3 _samplePoint)
 
     return noiseValue * (1 - falloff) * _VolumeDensity;
 }
+float GetPhase(float g, float _cosTheta)
+{
+    float phase = Isotropic_Scatering();
+
+    #ifdef PHASE_HG
+        phase = Henyey_Greenstein(g, _cosTheta);
+    #endif
+    #ifdef PHASE_REYLEIGH
+        phase = Rayleigh(_cosTheta);
+    #endif
+    #ifdef PHASE_SCHLICK
+        phase = Schlick(g, _cosTheta);
+    #endif
+
+    return phase;
+}
+float3 SampleSkybox(float3 _samplePoint, float3 _dirToLight, int _mipMap)
+{
+    float3 normal = normalize(_samplePoint - _SpherePosition);
+
+    float3 skybox = 0;
+    
+    skybox += _Skybox.SampleLevel(sampler_Skybox, normal, _mipMap).rgb;
+    skybox += _Skybox.SampleLevel(sampler_Skybox, _dirToLight, _mipMap).rgb;
+    skybox += _Skybox.SampleLevel(sampler_Skybox, -normal, _mipMap).rgb;
+    skybox += _Skybox.SampleLevel(sampler_Skybox, -_dirToLight, _mipMap).rgb;
+    
+    return skybox / 4.0;
+}
 
 [numthreads(8,8,1)]
 void CS_RaymarchVolumetric (uint3 id : SV_DispatchThreadID)
 {
     if(id.x >= _ScreenResolution.x || id.y >= _ScreenResolution.y) return;
-
 
     // early terminations
     float3 extinctionCoef = _AbsorptionCoef + _ScatteringCoef;
@@ -153,14 +207,21 @@ void CS_RaymarchVolumetric (uint3 id : SV_DispatchThreadID)
         TerminateEarly(id);
     }
 
-    // raymarching
+    // raymarching parameters
     float stepSize = _StepSize;
     float lightStepSize = _LightStepSize;
     float3 dirToLight = -_SunDirection;
     float3 lightColor = _SunColor;
 
     int steps = ceil(dstInsideVolume / stepSize);
+    steps = min(steps, MAX_STEPS);
     float3 volumeEntryPos = rayOrigin + rayDir * dstToVolume;
+
+    // approximation of multiple scattering
+    float3 albedo = _ScatteringCoef / max(extinctionCoef, 0.01);
+    float3 multiScatterDenom = 1.0 - albedo;
+    multiScatterDenom = max(0.05, multiScatterDenom);
+    float3 multiScatter = albedo / multiScatterDenom;
 
     float3 transmittance = 1;
     float3 output = 0;
@@ -178,9 +239,10 @@ void CS_RaymarchVolumetric (uint3 id : SV_DispatchThreadID)
         {
             // we need direction to Camera, which is -rayDir
             float cosAngle = dot(-rayDir, dirToLight);
-            float phase = Henyey_Greenstein(_AsymmetryFactor, cosAngle);
+            float phase = GetPhase(_AsymmetryFactor, cosAngle);
 
             int lightSteps = ceil(lightTravelledDist / lightStepSize);
+            lightSteps = min(lightSteps, MAX_LIGHT_STEPS);
             float tau = 0;
             for(int l = 0; l < lightSteps; l++)
             {                            
@@ -189,27 +251,45 @@ void CS_RaymarchVolumetric (uint3 id : SV_DispatchThreadID)
                 tau += GetDensity(lightSamplePoint);
             }
 
-            float3 beer = exp(-tau * lightStepSize * extinctionCoef);  
-            float powderMultiplier = 4;
-            float powderMin = 0.3f;
-            float3 powder = 1 - exp(-tau * lightStepSize * extinctionCoef * powderMultiplier); 
-            powder = max(powderMin, powder);
-            float3 lightAttenuation = beer * powder;
-            float3 scateredLight = phase * beer * lightColor;
+            float3 lightAttenuation = exp(-tau * lightStepSize * extinctionCoef);
+            float3 singleLightScatter = phase * lightAttenuation * lightColor;
             
-            scateredLight *= _ScateredLightMultiplier;
-            scateredLight += _ScateredLightBase;
+            // approximation of multiple scattering
+            float3 multiLightScatter = singleLightScatter 
+                                    * multiScatter 
+                                    * _MultiScatteredLightMultiplier;
+
+            // powder
+            float3 powder = 1;
+            if(_PowderPower != 0)
+            {
+                powder = 1 - exp(-tau * lightStepSize * extinctionCoef * _PowderExponent);
+                powder = lerp(1, powder, _PowderPower);
+            }
+
+            // ambient light
+            int mipMap = 8;
+            float3 ambientLight = SampleSkybox(samplePoint, dirToLight, mipMap);
+            float3 ambientLightScatter = ambientLight * _AmbientPower;
+            #ifdef APPLY_POWDER_TO_AMBIENT
+                ambientLightScatter *= powder;
+             #endif
+
+            // finalizing light and output
+            float3 scatteredLight = singleLightScatter + multiLightScatter;
+            scatteredLight *= powder;
+            scatteredLight += ambientLightScatter;
 
             output += transmittance
-                    * scateredLight
+                    * scatteredLight
                     * _ScatteringCoef
                     * stepSize
                     * sampleDensity;
         }
                     
-        if(min(min(transmittance.x, transmittance.y), transmittance.z) < 0.001)
+        if(min(min(transmittance.x, transmittance.y), transmittance.z) < 0.0001)
             break;
     }
-    VolumetricColor[id.xy] = output;
+    VolumetricColor[id.xy] = saturate(output);
     VolumetricTransmittance[id.xy] = transmittance;
 }

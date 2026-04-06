@@ -22,6 +22,8 @@ public class Tex3DViewer : MonoBehaviour
     protected float slice = 0f;
 
     [SerializeField]
+    protected Texture noiseOffsetTex;
+    [SerializeField]
     protected Shader previewShader;
     private Material previewMaterial;
 
@@ -99,6 +101,8 @@ public class Tex3DViewer : MonoBehaviour
         noiseCompute.SetFloat("_WorleyTiling", currentWorleyTiling);
         noiseCompute.SetFloat("_SimplexTiling", currentSimplexTiling);
         noiseCompute.SetFloat("_NoiseMix", currentNoiseMix);
+
+        noiseCompute.SetTexture(kernelIndex, "_NoiseOffsetTex", noiseOffsetTex);
 
         noiseCompute.SetFloat("_Resolution", currentTextureResolution);
 
