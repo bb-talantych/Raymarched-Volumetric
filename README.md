@@ -7,3 +7,8 @@ This project focuses on creating a **higly customizable renderer** for **volumet
 * Adjustable resolution for 3D noise texture
 * Exponent rule for multiplying powers with the same base
 * Early termination based on transmittance
+
+## Resources Used
+ - [Acerola](https://youtu.be/ryB8hT5TMSg?si=8OAnO4RpsvCn7oA6)
+ - [Sebastian Lague](https://youtu.be/4QOcCGI6xOU?si=MbLOhz84CBwUdQNo)
+ - [Scratch A Pixel](https://www.scratchapixel.com/lessons/3d-basic-rendering/volume-rendering-for-developers/intro-volume-rendering.html)
