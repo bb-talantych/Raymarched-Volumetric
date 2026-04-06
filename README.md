@@ -13,4 +13,4 @@ This project focuses on rendering **participating media(clouds, fog, etc.)** usi
  - [Sebastian Lague](https://youtu.be/4QOcCGI6xOU?si=MbLOhz84CBwUdQNo)
  - [Scratch A Pixel](https://www.scratchapixel.com/lessons/3d-basic-rendering/volume-rendering-for-developers/intro-volume-rendering.html)
  - [The Real-time Volumetric Cloudscapes of Horizon: Zero Dawn](https://advances.realtimerendering.com/s2015/The%20Real-time%20Volumetric%20Cloudscapes%20of%20Horizon%20-%20Zero%20Dawn%20-%20ARTR.pdf)
- - Chapter 14 (Volumetric and Translucency Rendering) of "Real-time Rendering 4"
+ - "Chapter 14 Volumetric and Translucency Rendering" from "Real-time Rendering 4"
