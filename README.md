@@ -6,9 +6,9 @@ This project focuses on rendering **participating media(clouds, fog, etc.)** usi
 ## Options Overview
 ### Raymarching Parameters
 ![](./Examples/options/options-raymarching-parameters.png)
-* **Step Size** - lenght of raymarching step inside volume
+* **Step Size** - lenght of **raymarching step** inside volume
 * **Light Step Size** - same as **step size**, but for light
-* **Downsampling itterations** - each itteration divides the resolution by 2, but stops when height isn't fully divisible
+* **Downsampling itterations** - each itteration **divides the resolution by 2**, but stops when height isn't fully divisible
 
 ### Noise Parameters
 ![](./Examples/options/options-noise-parameters.png)
