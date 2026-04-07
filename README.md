@@ -34,7 +34,7 @@ This project focuses on rendering **participating media(clouds, fog, etc.)** usi
 * **Multi Scattered Light Multiplier** - multiplier for **multi scattered light approximation**
 * **Powder Power** - lerps **powder** value between **1(0)** and **powder(1)**
 * **Powder Exponent** - multiplier inside **exp() function** that is used to calculate **powder**
-* **Ambient Setting** - options for ambient light(sampled from skybox cubemap)
+* **Ambient Setting** - options for **ambient light**(sampled from skybox cubemap)
   * Regular - doesn't apply **powder** to **ambient light**
   * Apply Powder - applies **powder** to **ambient light**
 * **Ambient Power** - lerps **ambient light** value between **0(0)** and * **Phase** - choise **of phase function**
