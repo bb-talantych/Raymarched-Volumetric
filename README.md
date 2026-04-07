@@ -6,7 +6,7 @@ This project focuses on rendering **participating media(clouds, fog, etc.)** usi
 ## Options Overview
 ### Raymarching Parameters
 * **Step Size** - lenght of raymarching step inside volume
-* * **Light Step Size** - same as **step size**, but for light
+* **Light Step Size** - same as **step size**, but for light
 
 ![](./Examples/options/options-raymarching-parameters.png)
 
