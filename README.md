@@ -4,6 +4,7 @@ This project focuses on rendering **participating media(clouds, fog, etc.)** usi
 ![](./Examples/volumetric-simple.gif)
 
 ## Options Overview
+### Raymarching Parameters
 ![](./Examples/options/options-raymarching-parameters.png)
 
 ![](./Examples/options/options-noise-parameters.png)
