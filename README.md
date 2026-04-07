@@ -4,7 +4,7 @@ This project focuses on rendering **participating media(clouds, fog, etc.)** usi
 ![](./Examples/volumetric-simple.gif)
 
 ## Options Overview
-###Raymarching Parameters
+### Raymarching Parameters
 ![](./Examples/options/options-raymarching-parameters.png)
 * **Step Size** - lenght of raymarching step inside volume
 * **Light Step Size** - same as **step size**, but for light
