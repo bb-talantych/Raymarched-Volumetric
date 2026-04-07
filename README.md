@@ -38,7 +38,7 @@ This project focuses on rendering **participating media(clouds, fog, etc.)** usi
   * Regular - doesn't apply **powder** to **ambient light**
   * Apply Powder - applies **powder** to **ambient light**
  
-* **Ambient Power** - lerps **ambient light** value between **0(0)** and * **Phase** - choise **of phase function**
+* **Ambient Power** - lerps **ambient light** value between **0(0)** and **ambient light(1)** 
 ### Final Output
 ![](./Examples/volumetric-custom.gif)
 
