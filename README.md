@@ -7,10 +7,13 @@ This project focuses on rendering **participating media(clouds, fog, etc.)** usi
 ### Raymarching Parameters
 ![](./Examples/options/options-raymarching-parameters.png)
 
+### Noise Parameters
 ![](./Examples/options/options-noise-parameters.png)
 
+### Volumetric Parameters
 ![](./Examples/options/options-volumetric-parameters.png)
 
+### Final Output
 ![](./Examples/volumetric-custom.gif)
 
 ## Optimization Techniques Used
