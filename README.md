@@ -37,6 +37,7 @@ This project focuses on rendering **participating media(clouds, fog, etc.)** usi
 * **Ambient Setting** - options for **ambient light**(sampled from skybox cubemap)
   * Regular - doesn't apply **powder** to **ambient light**
   * Apply Powder - applies **powder** to **ambient light**
+ 
 * **Ambient Power** - lerps **ambient light** value between **0(0)** and * **Phase** - choise **of phase function**
 ### Final Output
 ![](./Examples/volumetric-custom.gif)
