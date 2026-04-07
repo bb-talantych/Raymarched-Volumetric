@@ -7,6 +7,7 @@ This project focuses on rendering **participating media(clouds, fog, etc.)** usi
 * Adjustable resolution for 3D noise texture
 * Reduction of "exp()" function calls using exponent power rule
 * Early termination based on transmittance
+* Max steps limits for volume and light raymarching
 
 ## Resources Used
  - [Acerola](https://youtu.be/ryB8hT5TMSg?si=8OAnO4RpsvCn7oA6)
