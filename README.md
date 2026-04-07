@@ -19,6 +19,15 @@ This project focuses on rendering **participating media(clouds, fog, etc.)** usi
 * **Min Dist Multiplier** - Makes worley bubbles more pronounced and round
 
 ### Volumetric Parameters
+* **Animate** and **Animation Dir** - control animation
+* **Absoption Multiplier** and **Absoption Coef** - control **absoption coefficient**
+* **Scattering Multiplier** and **Scattering Coef** - control **scattering coefficient**
+* **Volume Density** - multiplier on **density**(sampled from 3D noise texture)
+* **Phase** - choise **of phase function**
+  * Isotropic
+  * Henyey Greenstein
+  * Rayleigh
+  * Schlick
 ![](./Examples/options/options-volumetric-parameters.png)
 
 ### Final Output
