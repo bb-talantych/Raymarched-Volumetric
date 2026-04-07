@@ -29,7 +29,7 @@ This project focuses on rendering **participating media(clouds, fog, etc.)** usi
   * Henyey Greenstein
   * Rayleigh
   * Schlick
-* **Asymmetry Factor** - **asymmetry factor** needed for some **phase functions**
+* **Asymmetry Factor** - needed for some **phase functions**
 * **Density Falloff** - smoothsteps density between **sphere center(0)** and **sphere edge(1)**
 * **Multi Scattered Light Multiplier** - multiplier for **multi scattered light approximation**
 * **Powder Power** - lerps **powder** value between **1(0)** and **powder(1)**
