@@ -2,6 +2,12 @@
 This project focuses on rendering **participating media(clouds, fog, etc.)** using **volumetric raymarcher**, while trying to make it as **customizable** and **physically accurate** as possible.
 
 ![](./Examples/volumetric-simple.gif)
+
+## Options Overview
+![](./Examples/options-raymarching-parameters.png)
+![](./Examples/options/options-noise-parameters.png)
+![](./Examples/options/options-volumetric-parameters.png)
+
 ![](./Examples/volumetric-custom.gif)
 
 ## Optimization Techniques Used
