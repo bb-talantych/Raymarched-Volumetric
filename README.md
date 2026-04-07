@@ -19,17 +19,25 @@ This project focuses on rendering **participating media(clouds, fog, etc.)** usi
 * **Min Dist Multiplier** - Makes worley bubbles more pronounced and round
 
 ### Volumetric Parameters
+![](./Examples/options/options-volumetric-parameters.png)
 * **Animate** and **Animation Dir** - control animation
 * **Absoption Multiplier** and **Absoption Coef** - control **absoption coefficient**
 * **Scattering Multiplier** and **Scattering Coef** - control **scattering coefficient**
 * **Volume Density** - multiplier on **density**(sampled from 3D noise texture)
 * **Phase** - choise **of phase function**
-  * Isotropic
+  * Isotropic - no phase function
   * Henyey Greenstein
   * Rayleigh
   * Schlick
-![](./Examples/options/options-volumetric-parameters.png)
-
+* **Asymmetry Factor** - **asymmetry factor** needed for some **phase functions**
+* **Density Falloff** - smoothsteps density between **sphere center(0)** and **sphere edge(1)**
+* **Multi Scattered Light Multiplier** - multiplier for **multi scattered light approximation**
+* **Powder Power** - lerps **powder** value between **1(0)** and **powder(1)**
+* **Powder Exponent** - multiplier inside **exp() function** that is used to calculate **powder**
+* **Ambient Setting** - options for ambient light(sampled from skybox cubemap)
+  * Regular - doesn't apply **powder** to **ambient light**
+  * Apply Powder - applies **powder** to **ambient light**
+* **Ambient Power** - lerps **ambient light** value between **0(0)** and * **Phase** - choise **of phase function**
 ### Final Output
 ![](./Examples/volumetric-custom.gif)
 
