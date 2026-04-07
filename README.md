@@ -12,6 +12,11 @@ This project focuses on rendering **participating media(clouds, fog, etc.)** usi
 
 ### Noise Parameters
 ![](./Examples/options/options-noise-parameters.png)
+* **Texture Resolution** - resolution of 3D noise texture
+* **Worley Tiling** - Tiling of **tilable worley**
+* **Noise Offset Tiling** - Tiling of secondary **offset noise**
+* **Noise Mix** - lerps between **offset noise(0)** and **worley(1)**
+* **Min Dist Multiplier** - Makes worley bubbles more pronounced and round
 
 ### Volumetric Parameters
 ![](./Examples/options/options-volumetric-parameters.png)
