@@ -1,6 +1,9 @@
 # Raymarched Volumetric
 This project focuses on rendering **participating media(clouds, fog, etc.)** using **volumetric raymarcher**, while trying to make it as **customizable** and **physically accurate** as possible.
 
+![](./Examples/volumetric-simple.gif)
+![](./Examples/volumetric-custom.gif)
+
 ## Optimization Techniques Used
 * Compute shader based raymarching calculations
 * Adjustable, itterative downsampling of render texture for compute shader
